@@ -7,14 +7,18 @@ require('dotenv').config(); // To load environment variables
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || 'IDK_WHAT_IM_DOING'; // Load secret from environment variables
+const JWT_SECRET = process.env.JWT_SECRET || 'IDK_WHAT_IM_DOING';
 
-// Middleware
-app.use(cors());
+// ✅ Restrict CORS to frontend domain
+app.use(cors({
+  origin: 'https://skillsphere25.netlify.app/', // 
+  credentials: true,
+}));
+
 app.use(express.json());
 
 // MongoDB connection
-const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/skill-sphere-db'; // Use environment variable or default
+const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/skill-sphere-db';
 mongoose.connect(mongoURI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -22,7 +26,7 @@ mongoose.connect(mongoURI, {
 .then(() => console.log('MongoDB connected'))
 .catch((err) => console.error('MongoDB connection error:', err));
 
-// Mongoose Models (Ensure you define these schemas)
+// Mongoose Models
 const User = mongoose.model('User', new mongoose.Schema({
   username: { type: String, required: true },
   email: { type: String, required: true, unique: true },
@@ -45,26 +49,22 @@ const Assessment = mongoose.model('Assessment', new mongoose.Schema({
 
 // Register
 app.post('/api/register', async (req, res) => {
-    const { username, email, password } = req.body;
-  
-    if (!email || !password || !username) {
-      return res.status(400).json({ error: 'All fields are required' });
-    }
-  
-    const passwordHash = await bcrypt.hash(password, 10);
-    try {
-      const user = new User({ username, email, passwordHash });
-      await user.save();
-      res.status(201).json({ message: 'User registered successfully' });
-    } catch (err) {
-      console.error('Registration error:', err); // log to terminal
-      res.status(400).json({
-        error: 'User registration failed',
-        details: err.message || err
-      });
-    }
-  });
-  
+  const { username, email, password } = req.body;
+  if (!email || !password || !username) {
+    return res.status(400).json({ error: 'All fields are required' });
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  try {
+    const user = new User({ username, email, passwordHash });
+    await user.save();
+    res.status(201).json({ message: 'User registered successfully' });
+  } catch (err) {
+    console.error('Registration error:', err);
+    res.status(400).json({ error: 'User registration failed', details: err.message || err });
+  }
+});
+
 // Login
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
@@ -102,7 +102,12 @@ app.get('/api/assessments', async (req, res) => {
   }
 });
 
-// Basic route
+// Test route
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'Hello from backend!' });
+});
+
+// Root route
 app.get('/', (req, res) => {
   res.send('Skill Sphere Backend is running');
 });
